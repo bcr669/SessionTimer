@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Match theme color to app background for seamless title bar -->
+    <meta name="theme-color" content="#1a1a1a">
     <title>Session Timer</title>
     
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlNlc3Npb24gVGltZXIiLAogICJzaG9ydF9uYW1lIjogIlNlc3Npb24iLAogICJzdGFydF91cmwiOiAiLi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxYTFhMWEiLAogICJ0aGVtZV9jb2xvciI6ICIjNGNhNjdjIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9jZG4taWNvbnMtcG5nLmZsYXRpY29uLmNvbS81MTIvMjUwNC8yNTA0ODk2LnBuZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogICAgfQogIF0KfQ==">
+    <!-- Updated Manifest with Window Controls Overlay support -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlNlc3Npb24gVGltZXIiLAogICJzaG9ydF9uYW1lIjogIlNlc3Npb24iLAogICJzdGFydF91cmwiOiAiLi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJkaXNwbGF5X292ZXJyaWRlIjogWyJ3aW5kb3ctY29udHJvbHMtb3ZlcmxheSIsICJzdGFuZGFsb25lIl0sCiAgIm9yaWVudGF0aW9uIjogInBvcnRyYWl0IiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMWExYTFhIiwKICAidGhlbWVfY29sb3IiOiAiIzFhMWExYSIsCiAgImljb25zIjogWwogICAgewogICAgICAic3JjIjogImh0dHBzOi8vY2RuLWljb25zLXBuZy5mbGF0aWNvbi5jb20vNTEyLzI1MDQvMjUwNDg5Ni5wbmciLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIsCiAgICAgICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSIKICAgIH0KICBdCn0=">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -17,15 +20,33 @@
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
         .animate-flash { animation: flash 1s steps(1) infinite; }
         .tabular-nums { font-variant-numeric: tabular-nums; }
+        
+        /* Draggable area for the title bar if overlay is active */
+        .titlebar-drag {
+            -webkit-app-region: drag;
+            app-region: drag;
+        }
+        button {
+            -webkit-app-region: no-drag;
+            app-region: no-drag;
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = "self.addEventListener('fetch', function(event) {});";
+                const blob = new Blob([swCode], {type: 'text/javascript'});
+                const url = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(url).catch(err => {});
+            });
+        }
+
         const { useState, useEffect, useRef } = React;
 
-        // Reactive SVG Icons - No external library dependency for rendering
         const Icons = {
             Play: ({ size = 16, className = "" }) => (
                 <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -147,7 +168,8 @@
             return (
                 <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-2 text-white font-sans select-none">
                     <div className="w-full max-w-[270px] bg-[#2b2b2b] border border-white/10 shadow-2xl rounded-xl overflow-hidden">
-                        <div className="flex justify-between items-center px-2 py-1 bg-black/20 border-b border-white/5">
+                        {/* Added titlebar-drag class to make the header draggable when wrapper is hidden */}
+                        <div className="titlebar-drag flex justify-between items-center px-2 py-1 bg-black/20 border-b border-white/5">
                             <div className="flex items-center gap-1.5">
                                 <Icons.Timer size={12} className="text-blue-400" />
                                 <span className="text-[10px] font-bold opacity-70 uppercase tracking-tight">Session Timer</span>
@@ -158,14 +180,14 @@
                             <div className="flex flex-col gap-1.5 flex-1">
                                 <div className="flex gap-1.5 h-[84px]">
                                     <div className={panel}>
-                                        <span className="text-[14px] opacity-80 font-semibold">Remaining</span>
+                                        <span className="text-[14px] opacity-80 font-semibold text-white">Remaining</span>
                                         <div className={`text-xl font-bold tabular-nums ${getRemainingColor(timeLeft)} ${isFinished || shouldFlash ? 'animate-flash' : ''}`}>
                                             {formatTime(timeLeft)}
                                         </div>
                                         <Ruler percent={remainingPercent} color="#4ca67c" />
                                     </div>
                                     <div className={panel}>
-                                        <span className="text-[14px] opacity-80 font-semibold">Elapsed</span>
+                                        <span className="text-[14px] opacity-80 font-semibold text-white">Elapsed</span>
                                         <div className={`text-xl font-bold tabular-nums ${getElapsedColor(countUpTime)}`}>
                                             {formatTime(countUpTime, 'up')}
                                         </div>
@@ -174,7 +196,7 @@
                                 </div>
                                 <div className="flex gap-1.5 h-[84px]">
                                     <div className={panel}>
-                                        <span className="text-[14px] opacity-80 font-semibold">Pay</span>
+                                        <span className="text-[14px] opacity-80 font-semibold text-white">Pay</span>
                                         <div className={`text-xl font-bold ${pay.color}`}>${pay.amount}</div>
                                         <div className="w-full h-[8px] flex items-end relative">
                                             <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/5 rounded-full" />
@@ -186,7 +208,7 @@
                                         </div>
                                     </div>
                                     <div className={panel}>
-                                        <span className="text-[14px] opacity-80 font-semibold">Lv Up</span>
+                                        <span className="text-[14px] opacity-80 font-semibold text-white">Lv Up</span>
                                         <div className={`text-xl font-bold tabular-nums ${getRemainingColor(timeLeft)}`}>
                                             {nextLvl.remaining > 0 ? formatTime(nextLvl.remaining) : "MAX"}
                                         </div>
@@ -208,7 +230,7 @@
                                         }
                                     }} 
                                     style={{ backgroundColor: isFinished ? '#333' : isActive ? '#d4b454' : '#4ca67c' }} 
-                                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg active:scale-95 border border-white/5 transition-colors duration-200"
+                                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg active:scale-95 border border-white/5 transition-colors duration-200 text-white"
                                 >
                                     {isActive ? <Icons.Pause size={14} /> : <Icons.Play size={14} className="ml-0.5" />}
                                 </button>
@@ -220,7 +242,7 @@
                                         accumulatedTimeRef.current = 0; 
                                         startTimeRef.current = null; 
                                     }} 
-                                    className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center active:scale-90 border border-white/5 hover:bg-white/20 transition-colors"
+                                    className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center active:scale-90 border border-white/5 hover:bg-white/20 transition-colors text-white"
                                 >
                                     <Icons.RotateCw size={14} />
                                 </button>
